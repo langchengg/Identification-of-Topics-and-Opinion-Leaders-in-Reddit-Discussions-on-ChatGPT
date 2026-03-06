@@ -60,11 +60,12 @@ end
 highlight(p, topUsers, 'NodeColor', 'r', 'MarkerSize', 7);
 % Annotate top users with their rank number.
 % Note: When many nodes are highlighted, overlapping text may occur.
+% Use findnode for efficient node index lookup instead of find+strcmp
+nodeIdxs = findnode(G, topUsers);
 for i = 1:N
-    % Find node index for the top user.
-    nodeIdx = find(strcmp(G.Nodes.Name, topUsers{i}));
+    nodeIdx = nodeIdxs(i);
     % Only annotate if the node coordinates exist (to avoid errors).
-    if ~isempty(nodeIdx)
+    if nodeIdx > 0
         text(p.XData(nodeIdx), p.YData(nodeIdx), num2str(i), ...
             'FontSize', 8, 'Color', 'k', 'FontWeight', 'bold');
     end
