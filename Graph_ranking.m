@@ -3,92 +3,92 @@ clear;
 close all;
 
 %% Read Data and Construct Graph
-% Read the CSV file (update the filename as needed)
-filename = 'updated_chatgpt_reddit_comments.csv';
-data = readtable(filename);
+% Read the CSV file containing Reddit comments
+inputFilename = 'updated_chatgpt_reddit_comments.csv';
+commentsTable = readtable(inputFilename);
 
 % Extract comment_id and comment_parent_id from the data table.
-comment_ids = data.comment_id;
-parent_ids  = data.comment_parent_id;
+commentIds = commentsTable.comment_id;
+parentCommentIds = commentsTable.comment_parent_id;
 
-% Collect all unique node names.
-all_nodes = unique([comment_ids; parent_ids]);
+% Collect all unique node identifiers.
+uniqueNodeIds = unique([commentIds; parentCommentIds]);
 
 % Create a list of edges (source, target).
 % An edge goes from a comment (child) to its parent.
-sources = comment_ids;
-targets = parent_ids;
+childCommentIds = commentIds;
+parentNodeIds = parentCommentIds;
 
-% Create a directed graph (omitting self loops)
-G = digraph(sources, targets, [], all_nodes, 'OmitSelfLoops');
+% Create a directed graph representing comment thread structure (omitting self loops)
+commentThreadGraph = digraph(childCommentIds, parentNodeIds, [], uniqueNodeIds, 'OmitSelfLoops');
 
 %% Compute Centrality Measures
 % PageRank: finds nodes with high influence based on link structure.
-pr_scores = centrality(G, 'pagerank');
+pageRankScores = centrality(commentThreadGraph, 'pagerank');
 
 % Hubs and Authorities: based on the HITS algorithm.
-hub_ranks  = centrality(G, 'hubs');
-auth_ranks = centrality(G, 'authorities');
+hubScores = centrality(commentThreadGraph, 'hubs');
+authorityScores = centrality(commentThreadGraph, 'authorities');
 
 % Closeness: outcloseness and incloseness measures.
-out_close = centrality(G, 'outcloseness');
-in_close  = centrality(G, 'incloseness');
+outClosenessScores = centrality(commentThreadGraph, 'outcloseness');
+inClosenessScores = centrality(commentThreadGraph, 'incloseness');
 
 % Store these measures in the Nodes table for later use.
-G.Nodes.PageRank = pr_scores;
-G.Nodes.Hubs = hub_ranks;
-G.Nodes.Authorities = auth_ranks;
-G.Nodes.OutCloseness = out_close;
-G.Nodes.InCloseness = in_close;
+commentThreadGraph.Nodes.PageRank = pageRankScores;
+commentThreadGraph.Nodes.Hubs = hubScores;
+commentThreadGraph.Nodes.Authorities = authorityScores;
+commentThreadGraph.Nodes.OutCloseness = outClosenessScores;
+commentThreadGraph.Nodes.InCloseness = inClosenessScores;
 
 %% Display Top Users Based on PageRank
 % Sort nodes by PageRank in descending order.
-[sortedPR, idxPR] = sort(pr_scores, 'descend');
+[sortedPageRankScores, sortedPageRankIndices] = sort(pageRankScores, 'descend');
 
-% Set N ensuring it does not exceed the total number of nodes.
-N = 5;
-if N > numel(G.Nodes.Name)
-    N = numel(G.Nodes.Name);
+% Set topUserCount ensuring it does not exceed the total number of nodes.
+topUserCount = 5;
+if topUserCount > numel(commentThreadGraph.Nodes.Name)
+    topUserCount = numel(commentThreadGraph.Nodes.Name);
 end
 
-topUsers = G.Nodes.Name(idxPR(1:N));
-topPR = sortedPR(1:N);
+topUserIds = commentThreadGraph.Nodes.Name(sortedPageRankIndices(1:topUserCount));
+topUserPageRankScores = sortedPageRankScores(1:topUserCount);
 
 disp('Top users based on PageRank:');
-for i = 1:N
-    fprintf('%d. User: %s | PageRank Score: %.5f\n', i, topUsers{i}, topPR(i));
+for rankIndex = 1:topUserCount
+    fprintf('%d. User: %s | PageRank Score: %.5f\n', rankIndex, topUserIds{rankIndex}, topUserPageRankScores(rankIndex));
 end
 
 %% Visualization of the Graph and Top Users
 
 % Plot the entire graph using a force-directed layout.
 figure;
-p = plot(G, 'Layout', 'force');
+graphPlot = plot(commentThreadGraph, 'Layout', 'force');
 title('Comment Thread Graph (Centrality Analysis)');
 axis off;
 
 % Highlight top users (by PageRank) in red.
-highlight(p, topUsers, 'NodeColor', 'r', 'MarkerSize', 7);
+highlight(graphPlot, topUserIds, 'NodeColor', 'r', 'MarkerSize', 7);
 
 % Annotate top users with their rank number.
 % Note: When many nodes are highlighted, overlapping text may occur.
 % Use findnode for efficient node index lookup instead of find+strcmp
-nodeIdxs = findnode(G, topUsers);
-for i = 1:N
-    nodeIdx = nodeIdxs(i);
+topUserNodeIndices = findnode(commentThreadGraph, topUserIds);
+for rankIndex = 1:topUserCount
+    nodeIndex = topUserNodeIndices(rankIndex);
     % Only annotate if the node coordinates exist (to avoid errors).
-    if nodeIdx > 0
-        text(p.XData(nodeIdx), p.YData(nodeIdx), num2str(i), ...
+    if nodeIndex > 0
+        text(graphPlot.XData(nodeIndex), graphPlot.YData(nodeIndex), num2str(rankIndex), ...
             'FontSize', 8, 'Color', 'k', 'FontWeight', 'bold');
     end
 end
 
 %% Bar Chart of Top Users Based on PageRank
 figure;
-bar(topPR);
-% To improve readability when N is large, show only every label.
-xtickIdx = 1:N;
-set(gca, 'XTick', xtickIdx, 'XTickLabel', topUsers(xtickIdx), 'XTickLabelRotation', 45);
+bar(topUserPageRankScores);
+% To improve readability when topUserCount is large, show only every label.
+xAxisTickIndices = 1:topUserCount;
+set(gca, 'XTick', xAxisTickIndices, 'XTickLabel', topUserIds(xAxisTickIndices), 'XTickLabelRotation', 45);
 xlabel('User ID');
 ylabel('PageRank Score');
 title('Top 5 Users Based on PageRank');
@@ -97,52 +97,52 @@ grid on;
 %% (Optional) Visualization for Hubs, Authorities, Closeness
 
 % Top Hubs
-[sortedHubs, idxHubs] = sort(hub_ranks, 'descend');
-topHubs = G.Nodes.Name(idxHubs(1:N));
-topHubsScores = sortedHubs(1:N);
+[sortedHubScores, sortedHubIndices] = sort(hubScores, 'descend');
+topHubUserIds = commentThreadGraph.Nodes.Name(sortedHubIndices(1:topUserCount));
+topHubValues = sortedHubScores(1:topUserCount);
 figure;
-bar(topHubsScores);
-xtickIdx = 1:N;
-set(gca, 'XTick', xtickIdx, 'XTickLabel', topHubs(xtickIdx), 'XTickLabelRotation', 45);
+bar(topHubValues);
+xAxisTickIndices = 1:topUserCount;
+set(gca, 'XTick', xAxisTickIndices, 'XTickLabel', topHubUserIds(xAxisTickIndices), 'XTickLabelRotation', 45);
 xlabel('User ID');
 ylabel('Hub Score');
 title('Top 5 Users Based on Hubs Centrality');
 grid on;
 
 % Top Authorities
-[sortedAuth, idxAuth] = sort(auth_ranks, 'descend');
-topAuth = G.Nodes.Name(idxAuth(1:N));
-topAuthScores = sortedAuth(1:N);
+[sortedAuthorityScores, sortedAuthorityIndices] = sort(authorityScores, 'descend');
+topAuthorityUserIds = commentThreadGraph.Nodes.Name(sortedAuthorityIndices(1:topUserCount));
+topAuthorityValues = sortedAuthorityScores(1:topUserCount);
 figure;
-bar(topAuthScores);
-xtickIdx = 1:N;
-set(gca, 'XTick', xtickIdx, 'XTickLabel', topAuth(xtickIdx), 'XTickLabelRotation', 45);
+bar(topAuthorityValues);
+xAxisTickIndices = 1:topUserCount;
+set(gca, 'XTick', xAxisTickIndices, 'XTickLabel', topAuthorityUserIds(xAxisTickIndices), 'XTickLabelRotation', 45);
 xlabel('User ID');
 ylabel('Authorities Score');
 title('Top 5 Users Based on Authorities Centrality');
 grid on;
 
 % Top Out Closeness
-[sortedOut, idxOut] = sort(out_close, 'descend');
-topOut = G.Nodes.Name(idxOut(1:N));
-topOutScores = sortedOut(1:N);
+[sortedOutClosenessScores, sortedOutClosenessIndices] = sort(outClosenessScores, 'descend');
+topOutClosenessUserIds = commentThreadGraph.Nodes.Name(sortedOutClosenessIndices(1:topUserCount));
+topOutClosenessValues = sortedOutClosenessScores(1:topUserCount);
 figure;
-bar(topOutScores);
-xtickIdx = 1:N;
-set(gca, 'XTick', xtickIdx, 'XTickLabel', topOut(xtickIdx), 'XTickLabelRotation', 45);
+bar(topOutClosenessValues);
+xAxisTickIndices = 1:topUserCount;
+set(gca, 'XTick', xAxisTickIndices, 'XTickLabel', topOutClosenessUserIds(xAxisTickIndices), 'XTickLabelRotation', 45);
 xlabel('User ID');
 ylabel('Out Closeness Score');
 title('Top 5 Users Based on Out Closeness');
 grid on;
 
 % Top In Closeness
-[sortedIn, idxIn] = sort(in_close, 'descend');
-topIn = G.Nodes.Name(idxIn(1:N));
-topInScores = sortedIn(1:N);
+[sortedInClosenessScores, sortedInClosenessIndices] = sort(inClosenessScores, 'descend');
+topInClosenessUserIds = commentThreadGraph.Nodes.Name(sortedInClosenessIndices(1:topUserCount));
+topInClosenessValues = sortedInClosenessScores(1:topUserCount);
 figure;
-bar(topInScores);
-xtickIdx = 1:N;
-set(gca, 'XTick', xtickIdx, 'XTickLabel', topIn(xtickIdx), 'XTickLabelRotation', 45);
+bar(topInClosenessValues);
+xAxisTickIndices = 1:topUserCount;
+set(gca, 'XTick', xAxisTickIndices, 'XTickLabel', topInClosenessUserIds(xAxisTickIndices), 'XTickLabelRotation', 45);
 xlabel('User ID');
 ylabel('In Closeness Score');
 title('Top 5 Users Based on In Closeness');
