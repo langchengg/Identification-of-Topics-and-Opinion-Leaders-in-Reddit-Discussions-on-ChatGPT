@@ -2,32 +2,32 @@ clc;
 clear;
 close all
 
-% Read the Excel file
-filename = 'updated_chatgpt_reddit_comments.csv'; % Update with your actual filename
-data = readtable(filename);
+% Read the CSV file containing Reddit comments
+inputFilename = 'updated_chatgpt_reddit_comments.csv'; % Update with your actual filename
+commentsTable = readtable(inputFilename);
 
-% Extract comment_id and comment_parent_id
-comment_ids = data.comment_id;
-parent_ids = data.comment_parent_id;
+% Extract comment_id and comment_parent_id columns
+commentIds = commentsTable.comment_id;
+parentCommentIds = commentsTable.comment_parent_id;
 
-% Collect all unique node names
-all_nodes = unique([comment_ids; parent_ids]);
+% Collect all unique node identifiers
+uniqueNodeIds = unique([commentIds; parentCommentIds]);
 
 % Create a list of edges (source, target)
-sources = comment_ids;
-targets = parent_ids;
+% Each edge connects a child comment to its parent comment
+childCommentIds = commentIds;
+parentNodeIds = parentCommentIds;
 
-% Create a directed graph
-G = digraph(sources, targets, [], all_nodes, 'OmitSelfLoops');
+% Create a directed graph representing comment thread structure
+commentThreadGraph = digraph(childCommentIds, parentNodeIds, [], uniqueNodeIds, 'OmitSelfLoops');
 
-% Plot the graph title('Comment Thread Graph');
+% Plot the comment thread graph using force-directed layout
 figure;
-% p = plot(G, 'Layout', 'force', 'NodeLabel', G.Nodes.Name);
-p = plot(G, 'Layout', 'force');
+graphPlot = plot(commentThreadGraph, 'Layout', 'force');
 axis off;
 
-% Adjust figure size if needed
+% Adjust figure size for better visualization
 set(gcf, 'Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96]);
 
-% Save the figure as a PNG file：saveas(gcf, 'CommentThreadGraph.png');
+% Save the figure as a PNG file: saveas(gcf, 'CommentThreadGraph.png');
 
